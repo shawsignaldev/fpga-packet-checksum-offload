@@ -1,0 +1,16 @@
+[project]
+name = "fpga-packet-checksum-offload"
+version = "0.1.0"
+description = "FPGA-style packet checksum offload utilities."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Ephraim Shaw", email = "shawsignaldev@proton.me" }]
+keywords = ['fpga', 'checksum', 'packets', 'offload']
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
