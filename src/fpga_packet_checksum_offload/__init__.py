@@ -8,11 +8,23 @@ from fpga_packet_checksum_offload.arithmetic import (
     replace_word_checksum,
     verify_bytes,
 )
+from fpga_packet_checksum_offload.campaign import (
+    CampaignCase,
+    CampaignResult,
+    run_campaign,
+)
 from fpga_packet_checksum_offload.checksum import (
     ChecksumResult,
     checksum16,
     offload,
     validate,
+)
+from fpga_packet_checksum_offload.cycle_model import (
+    ChecksumCycleModel,
+    CycleObservation,
+    StreamBeat,
+    StreamResult,
+    StreamStatus,
 )
 from fpga_packet_checksum_offload.packet import (
     ChecksumField,
@@ -44,14 +56,21 @@ from fpga_packet_checksum_offload.trace_io import (
 __all__ = [
     "SCHEMA_VERSION",
     "BatchOutcome",
+    "CampaignCase",
+    "CampaignResult",
     "ChecksumAccumulator",
+    "ChecksumCycleModel",
     "ChecksumField",
     "ChecksumResult",
     "ChecksumState",
+    "CycleObservation",
     "FrameInspection",
     "FrameRecord",
     "IPv4Info",
     "PacketFormatError",
+    "StreamBeat",
+    "StreamResult",
+    "StreamStatus",
     "TraceLimits",
     "TransportInfo",
     "VlanTag",
@@ -69,6 +88,7 @@ __all__ = [
     "render_inspection_json",
     "render_inspection_markdown",
     "replace_word_checksum",
+    "run_campaign",
     "validate",
     "verify_bytes",
     "write_text_atomic",
