@@ -10,7 +10,10 @@
 module checksum16_stream #(
     parameter integer DATA_WIDTH = 64,
     parameter integer KEEP_WIDTH = 8,
-    parameter integer LENGTH_WIDTH = 16
+    parameter integer LENGTH_WIDTH = 16,
+    // Evidence-only mutation controls. Production/default behavior is zero.
+    parameter bit FAULT_DROP_ODD_PAD = 1'b0,
+    parameter bit FAULT_MUTATE_STALL = 1'b0
 ) (
     input  logic                     clk,
     input  logic                     reset_n,
@@ -27,6 +30,14 @@ module checksum16_stream #(
     output logic [15:0]              response_checksum,
     output logic [15:0]              response_folded_sum,
     output logic [LENGTH_WIDTH-1:0]  response_byte_length
+`ifdef FORMAL
+    ,
+    output wire                      formal_packet_active,
+    output wire [15:0]               formal_packet_sum,
+    output wire [((LENGTH_WIDTH < 4) ? 4 : LENGTH_WIDTH)-1:0]
+                                     formal_packet_byte_length,
+    output wire [15:0]               formal_folded_combined_sum
+`endif
 );
     localparam logic [2:0] STATUS_SUCCESS          = 3'd0;
     localparam logic [2:0] STATUS_MISSING_FIRST    = 3'd1;
@@ -43,6 +54,13 @@ module checksum16_stream #(
     logic packet_active;
     logic [15:0] packet_sum;
     logic [STORAGE_LENGTH_WIDTH-1:0] packet_byte_length;
+
+`ifdef FORMAL
+    assign formal_packet_active = packet_active;
+    assign formal_packet_sum = packet_sum;
+    assign formal_packet_byte_length = packet_byte_length;
+    assign formal_folded_combined_sum = folded_combined_sum;
+`endif
 
     logic keep_valid;
     logic [3:0] valid_byte_count;
@@ -110,7 +128,10 @@ module checksum16_stream #(
                 end else begin
                     low_byte = 8'd0;
                 end
-                beat_sum = beat_sum + {4'd0, high_byte, low_byte};
+                if (!FAULT_DROP_ODD_PAD
+                    || ((data_lane + 1) < valid_byte_count)) begin
+                    beat_sum = beat_sum + {4'd0, high_byte, low_byte};
+                end
             end
         end
     end
@@ -179,6 +200,10 @@ module checksum16_stream #(
             response_folded_sum <= 16'd0;
             response_byte_length <= '0;
         end else begin
+            if (FAULT_MUTATE_STALL && response_valid && !response_ready) begin
+                response_checksum <= response_checksum ^ 16'h0001;
+            end
+
             if (response_valid && response_ready) begin
                 response_valid <= 1'b0;
             end

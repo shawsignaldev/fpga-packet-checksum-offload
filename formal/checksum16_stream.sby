@@ -1,0 +1,31 @@
+[tasks]
+positive
+cover
+odd_padding_mutation
+stall_state_mutation
+
+[options]
+positive: mode bmc
+positive: depth 20
+cover: mode cover
+cover: depth 20
+odd_padding_mutation: mode bmc
+odd_padding_mutation: depth 8
+stall_state_mutation: mode bmc
+stall_state_mutation: depth 8
+
+[engines]
+smtbmc boolector
+
+[script]
+positive: read -formal -D FORMAL checksum16_stream.sv checksum16_stream_formal.sv
+cover: read -formal -D FORMAL checksum16_stream.sv checksum16_stream_formal.sv
+odd_padding_mutation: read -formal -D FORMAL -D FORMAL_ODD_CONTROL checksum16_stream.sv checksum16_stream_formal.sv
+stall_state_mutation: read -formal -D FORMAL -D FORMAL_STALL_CONTROL checksum16_stream.sv checksum16_stream_formal.sv
+odd_padding_mutation: chparam -set FAULT_DROP_ODD_PAD 1 checksum16_stream_formal
+stall_state_mutation: chparam -set FAULT_MUTATE_STALL 1 checksum16_stream_formal
+prep -top checksum16_stream_formal
+
+[files]
+rtl/checksum16_stream.sv
+formal/checksum16_stream_formal.sv

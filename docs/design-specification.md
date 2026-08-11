@@ -34,10 +34,10 @@ Reports are deterministic, schema-versioned JSON and Markdown. The CLI supports 
 
 Python tests cover published RFC arithmetic examples, differential comparison with an independent byte-pair oracle, randomized chunking invariance, incremental update equivalence, packet parsing, malformed inputs, bounded readers, reports, CLI exits, and package contents.
 
-Hardware verification includes Verilator lint, Icarus vector simulation, explicit backpressure and zero-bubble tests, invalid-parameter simulation, Yosys synthesis, and bounded formal assertions. The formal suite proves state stability under stalls, packet-state transitions, output stability, and valid result ranges. Two intentional mutations, odd-byte padding removal and stalled-state mutation, must each yield a counterexample.
+Hardware verification includes Verilator lint, Icarus vector simulation, explicit backpressure and zero-bubble tests, invalid-parameter simulation, Yosys synthesis, and bounded formal assertions. The formal suite runs a bounded depth-20 formal proof for state stability under stalls, packet-state transitions, output stability, reset recovery, and valid result ranges. A separate cover depth 20 run requires witnesses for successful completion, every error status, multibeat completion, response stall, zero-bubble replacement, and recurrent reset. Two intentional mutations, odd-byte padding removal and stalled-state mutation, must each yield a counterexample.
 
 Distribution verification builds source and wheel artifacts, checks metadata, executes tests from the extracted source archive, and runs the installed command from an isolated wheel environment. CI spans every declared Python version.
 
 ## Evidence Boundary
 
-The project proves arithmetic, parsing, and bounded streaming-control properties for the included reference implementation. It does not claim physical timing closure, line-rate performance on a specific device, PCIe or MAC integration, production network deployment, or complete protocol coverage.
+The project proves arithmetic, parsing, and bounded streaming-control properties for the included reference implementation. It does not claim an unbounded formal proof, physical timing closure, line-rate performance on a specific device, PCIe or MAC integration, production network deployment, or complete protocol coverage.
