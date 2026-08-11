@@ -68,11 +68,7 @@ class CampaignResult:
             raise ValueError("failed_case_names must match failing cases")
         expected_coverage = tuple(
             sorted(
-                {
-                    behavior
-                    for case in self.cases
-                    for behavior in case.behavior_names
-                }
+                {behavior for case in self.cases for behavior in case.behavior_names}
             )
         )
         if self.covered_behavior_names != expected_coverage:
@@ -171,7 +167,9 @@ def _seeded_sum() -> None:
 
 def _multibeat_pairing() -> None:
     data = bytes(range(1, 22))
-    _verify_equal(len(_beats(data)), 3, "multibeat fixture does not contain three beats")
+    _verify_equal(
+        len(_beats(data)), 3, "multibeat fixture does not contain three beats"
+    )
     _verify_equal(
         _packet_result(data, seed=0x1234),
         _expected(data, seed=0x1234),
@@ -344,7 +342,7 @@ def run_campaign() -> CampaignResult:
     for name, behaviors, operation in _CASES:
         try:
             operation()
-        except Exception as error:  # noqa: BLE001  # pragma: no cover
+        except Exception as error:  # pragma: no cover
             cases.append(
                 CampaignCase(
                     name=name,
@@ -365,13 +363,7 @@ def run_campaign() -> CampaignResult:
     case_records = tuple(cases)
     failed_names = tuple(case.name for case in case_records if not case.passed)
     coverage = tuple(
-        sorted(
-            {
-                behavior
-                for case in case_records
-                for behavior in case.behavior_names
-            }
-        )
+        sorted({behavior for case in case_records for behavior in case.behavior_names})
     )
     passed = sum(case.passed for case in case_records)
     failed_text = ",".join(failed_names) if failed_names else "none"

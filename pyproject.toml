@@ -1,16 +1,75 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "fpga-packet-checksum-offload"
-version = "0.1.0"
-description = "FPGA-style packet checksum offload utilities."
+version = "1.0.0"
+description = "Protocol-aware software and synthesizable RTL for Internet checksum offload."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
 authors = [{ name = "Ephraim Shaw", email = "shawsignaldev@proton.me" }]
-keywords = ['fpga', 'checksum', 'packets', 'offload']
+keywords = [
+  "checksum",
+  "ethernet",
+  "fpga",
+  "ipv4",
+  "packet-processing",
+  "systemverilog",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
+  "Topic :: System :: Networking",
+]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/shawsignaldev/fpga-packet-checksum-offload"
+Issues = "https://github.com/shawsignaldev/fpga-packet-checksum-offload/issues"
+
+[project.scripts]
+checksum-offload = "fpga_packet_checksum_offload.cli:entrypoint"
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+dev = [
+  "build>=1.2",
+  "pytest>=8.0",
+  "ruff>=0.11",
+  "tomli>=2.0; python_version < '3.11'",
+  "twine>=6.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["fpga_packet_checksum_offload*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+addopts = "--strict-config --strict-markers"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+extend-exclude = ["build", "dist"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.ruff.format]
+line-ending = "lf"

@@ -324,7 +324,9 @@ def test_vector_check_mode_ties_include_to_on_disk_text_fields(tmp_path):
     )
     assert generated.returncode == 0, generated.stderr
     output.write_text(
-        output.read_text(encoding="ascii").replace(" SUCCESS 9753 ", " SUCCESS 9752 ", 1),
+        output.read_text(encoding="ascii").replace(
+            " SUCCESS 9753 ", " SUCCESS 9752 ", 1
+        ),
         encoding="ascii",
         newline="\n",
     )

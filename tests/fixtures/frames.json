@@ -76,5 +76,30 @@
       "transport_checksum": null,
       "transport_checksum_state": null
     }
+  },
+  "udp_first_fragment": {
+    "frame_hex": "00112233445566778899aabb08004500001c1234200040115c66c0000201c63364023039d43100181bab",
+    "source_ip": "192.0.2.1",
+    "destination_ip": "198.51.100.2",
+    "source_port": 12345,
+    "destination_port": 54321,
+    "payload": "667261676d656e74207061796c6f6164",
+    "expected": {
+      "destination_mac": "001122334455",
+      "source_mac": "66778899aabb",
+      "outer_ethertype": 2048,
+      "payload_ethertype": 2048,
+      "source_ip": "192.0.2.1",
+      "destination_ip": "198.51.100.2",
+      "ip_protocol": 17,
+      "ipv4_checksum": 23654,
+      "ipv4_checksum_state": "valid",
+      "transport_protocol": "UDP",
+      "source_port": 12345,
+      "destination_port": 54321,
+      "transport_checksum": 7083,
+      "transport_checksum_calculated": null,
+      "transport_checksum_state": "incomplete"
+    }
   }
 }

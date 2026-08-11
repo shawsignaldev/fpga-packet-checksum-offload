@@ -1,0 +1,437 @@
+from __future__ import annotations
+
+import io
+import os
+import re
+import stat
+import subprocess
+import sys
+import tarfile
+import zipfile
+from pathlib import Path, PurePosixPath
+
+import pytest
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _run(
+    command: list[str],
+    *,
+    cwd: Path = ROOT,
+    env: dict[str, str] | None = None,
+    timeout: int = 180,
+):
+    return subprocess.run(
+        command,
+        cwd=cwd,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=timeout,
+    )
+
+
+def _metadata():
+    return tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+
+
+def test_project_metadata_declares_the_public_release_contract():
+    project = _metadata()["project"]
+
+    assert project["name"] == "fpga-packet-checksum-offload"
+    assert project["version"] == "1.0.0"
+    assert project["requires-python"] == ">=3.10"
+    assert project["license"] == "MIT"
+    assert project["dependencies"] == []
+    assert project["scripts"] == {
+        "checksum-offload": "fpga_packet_checksum_offload.cli:entrypoint"
+    }
+    assert project["urls"]["Repository"].endswith("/fpga-packet-checksum-offload")
+    for version in range(10, 15):
+        assert (
+            f"Programming Language :: Python :: 3.{version}" in project["classifiers"]
+        )
+    assert {"pytest", "ruff", "build", "twine"} <= {
+        re.split(r"[<>=!~]", requirement, maxsplit=1)[0]
+        for requirement in project["optional-dependencies"]["dev"]
+    }
+
+
+def test_python_310_collection_has_tomllib_fallback_and_ci_collection_gate():
+    source = (ROOT / "tests/test_package_contract.py").read_text(encoding="utf-8")
+    dev_dependencies = _metadata()["project"]["optional-dependencies"]["dev"]
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+    assert "except ModuleNotFoundError:\n    import tomli as tomllib" in source
+    assert "tomli>=2.0; python_version < '3.11'" in dev_dependencies
+    assert "python -m pytest --collect-only -q" in workflow
+
+
+def test_runtime_version_matches_distribution_metadata():
+    import fpga_packet_checksum_offload as package
+
+    assert package.__version__ == "1.0.0"
+
+
+def test_release_surface_and_ci_contract_are_present():
+    required = [
+        "MANIFEST.in",
+        "CHANGELOG.md",
+        "CONTRIBUTING.md",
+        "SECURITY.md",
+        ".github/workflows/ci.yml",
+        "docs/architecture.md",
+        "docs/protocol-boundary.md",
+        "docs/formal-verification.md",
+        "docs/operations.md",
+        "docs/threat-model.md",
+        "docs/verification-methodology.md",
+        "examples/frames.jsonl",
+        "reports/batch-report.json",
+        "reports/batch-report.md",
+        "reports/campaign.json",
+        "reports/campaign.md",
+        "reports/frame-inspection.json",
+    ]
+    for relative in required:
+        assert (ROOT / relative).is_file(), relative
+
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    pinned_actions = {
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1": 3,
+        "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0": 3,
+        "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1": 1,
+        "YosysHQ/setup-oss-cad-suite@c7845bc0d335c8076aa22047e85972caa8a916df # v4": 1,
+    }
+    for action, expected_count in pinned_actions.items():
+        assert workflow.count(action) == expected_count
+    for floating_action in (
+        "actions/checkout@v7",
+        "actions/setup-python@v7",
+        "actions/upload-artifact@v7",
+        "YosysHQ/setup-oss-cad-suite@v4",
+    ):
+        assert floating_action not in workflow
+    for version in ("3.10", "3.11", "3.12", "3.13", "3.14"):
+        assert version in workflow
+    assert "contents: read" in workflow
+    assert "REQUIRE_HDL_TOOLS: 1" in workflow
+    assert "timeout-minutes:" in workflow
+    assert "concurrency:" in workflow
+
+
+def test_public_prose_is_complete_and_evidence_honest():
+    public_paths = [
+        ROOT / "README.md",
+        ROOT / "CHANGELOG.md",
+        ROOT / "CONTRIBUTING.md",
+        ROOT / "SECURITY.md",
+        *sorted((ROOT / "docs").glob("*.md")),
+    ]
+    combined = "\n".join(path.read_text(encoding="utf-8") for path in public_paths)
+    lowered = combined.lower()
+
+    for required in (
+        "ready/valid",
+        "depth 20",
+        "timing closure",
+        "ipv6",
+        "reassembly",
+        "checksum insertion",
+        "exit code",
+        "verilator",
+        "iverilog",
+        "yosys",
+        "symbiyosys",
+    ):
+        assert required in lowered
+    prohibited = (
+        "\x63hatgpt",
+        "\x63laude",
+        "\x63odex",
+        "generated by \x61i",
+        "internal \x70rompt",
+        "\x74odo",
+        "\x66ixme",
+        "c:\\\x75sers\\",
+        "\x66iboguapcci",
+    )
+    for term in prohibited:
+        assert term not in lowered
+
+
+def test_operations_and_threat_model_state_exact_direct_and_batch_bounds():
+    operations = (ROOT / "docs/operations.md").read_text(encoding="utf-8")
+    threat_model = (ROOT / "docs/threat-model.md").read_text(encoding="utf-8")
+
+    for document in (operations, threat_model):
+        assert "65,535 decoded bytes" in document
+        assert "`checksum` and `inspect`" in document
+        assert "8 MiB" in document
+        assert "256 KiB" in document
+        assert "10,000 records" in document
+
+
+def test_manifest_names_every_nonruntime_release_area():
+    manifest = (ROOT / "MANIFEST.in").read_text(encoding="utf-8")
+    for area in (
+        "tests",
+        "rtl",
+        "formal",
+        "tools",
+        "docs",
+        "examples",
+        "reports",
+        ".github/workflows",
+    ):
+        assert area in manifest
+
+
+def test_repository_root_contains_only_release_inputs_and_known_tool_state():
+    allowed = {
+        ".git",
+        ".github",
+        ".gitignore",
+        ".pytest_cache",
+        ".ruff_cache",
+        "CHANGELOG.md",
+        "CONTRIBUTING.md",
+        "LICENSE",
+        "MANIFEST.in",
+        "README.md",
+        "SECURITY.md",
+        "build",
+        "dist",
+        "docs",
+        "examples",
+        "formal",
+        "pyproject.toml",
+        "reports",
+        "rtl",
+        "src",
+        "tests",
+        "tools",
+    }
+
+    unexpected = sorted(
+        path.name for path in ROOT.iterdir() if path.name not in allowed
+    )
+    assert unexpected == []
+
+
+def _safe_archive_names(names: list[str]) -> None:
+    for name in names:
+        path = PurePosixPath(name)
+        if path.is_absolute() or ".." in path.parts or "\\" in name:
+            raise ValueError(f"unsafe archive path: {name}")
+
+
+def _validate_wheel_archive(path: Path) -> list[zipfile.ZipInfo]:
+    with zipfile.ZipFile(path) as archive:
+        members = archive.infolist()
+    _safe_archive_names([member.filename for member in members])
+    for member in members:
+        mode = (member.external_attr >> 16) & 0xFFFF
+        file_type = stat.S_IFMT(mode)
+        allowed_types = (0, stat.S_IFDIR) if member.is_dir() else (0, stat.S_IFREG)
+        if file_type not in allowed_types:
+            raise ValueError(f"unsafe wheel member type: {member.filename}")
+    return members
+
+
+def _validate_sdist_archive(path: Path) -> list[tarfile.TarInfo]:
+    with tarfile.open(path, mode="r:*") as archive:
+        members = archive.getmembers()
+    _safe_archive_names([member.name for member in members])
+    for member in members:
+        if not (member.isfile() or member.isdir()):
+            raise ValueError(f"unsafe sdist member type: {member.name}")
+    return members
+
+
+@pytest.mark.parametrize(
+    "file_type",
+    [stat.S_IFLNK, stat.S_IFIFO, stat.S_IFCHR, stat.S_IFBLK, stat.S_IFSOCK],
+)
+def test_wheel_archive_rejects_safe_named_unix_special_members(tmp_path, file_type):
+    wheel = tmp_path / "malicious.whl"
+    member = zipfile.ZipInfo("package/safe-name.py")
+    member.create_system = 3
+    member.external_attr = (file_type | 0o644) << 16
+    with zipfile.ZipFile(wheel, mode="w") as archive:
+        archive.writestr(member, b"payload")
+
+    _safe_archive_names([member.filename])
+    with pytest.raises(ValueError, match="unsafe wheel member type"):
+        _validate_wheel_archive(wheel)
+
+
+def test_wheel_archive_allows_regular_cross_platform_members(tmp_path):
+    wheel = tmp_path / "regular.whl"
+    windows_file = zipfile.ZipInfo("package/windows.py")
+    windows_file.create_system = 0
+    unix_file = zipfile.ZipInfo("package/unix.py")
+    unix_file.create_system = 3
+    unix_file.external_attr = (stat.S_IFREG | 0o644) << 16
+    unix_directory = zipfile.ZipInfo("package/data/")
+    unix_directory.create_system = 3
+    unix_directory.external_attr = (stat.S_IFDIR | 0o755) << 16
+    with zipfile.ZipFile(wheel, mode="w") as archive:
+        archive.writestr(windows_file, b"windows")
+        archive.writestr(unix_file, b"unix")
+        archive.writestr(unix_directory, b"")
+
+    assert len(_validate_wheel_archive(wheel)) == 3
+
+
+@pytest.mark.parametrize(
+    "member_type",
+    [
+        tarfile.SYMTYPE,
+        tarfile.LNKTYPE,
+        tarfile.FIFOTYPE,
+        tarfile.CHRTYPE,
+        tarfile.BLKTYPE,
+    ],
+)
+def test_sdist_archive_rejects_safe_named_nonregular_members(tmp_path, member_type):
+    sdist = tmp_path / "malicious.tar.gz"
+    member = tarfile.TarInfo("package/safe-name")
+    member.type = member_type
+    if member_type in (tarfile.SYMTYPE, tarfile.LNKTYPE):
+        member.linkname = "package/also-safe-name"
+    with tarfile.open(sdist, mode="w:gz") as archive:
+        archive.addfile(member)
+
+    _safe_archive_names([member.name])
+    with pytest.raises(ValueError, match="unsafe sdist member type"):
+        _validate_sdist_archive(sdist)
+
+
+def test_sdist_archive_allows_only_regular_files_and_directories(tmp_path):
+    sdist = tmp_path / "regular.tar.gz"
+    directory = tarfile.TarInfo("package")
+    directory.type = tarfile.DIRTYPE
+    regular = tarfile.TarInfo("package/file.txt")
+    payload = b"payload"
+    regular.size = len(payload)
+    with tarfile.open(sdist, mode="w:gz") as archive:
+        archive.addfile(directory)
+        archive.addfile(regular, io.BytesIO(payload))
+
+    assert len(_validate_sdist_archive(sdist)) == 2
+
+
+@pytest.fixture(scope="session")
+def distributions(tmp_path_factory):
+    output = tmp_path_factory.mktemp("distributions")
+    result = _run(
+        [sys.executable, "-m", "build", "--no-isolation", "--outdir", str(output)],
+        timeout=240,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    wheels = tuple(output.glob("*.whl"))
+    sdists = tuple(output.glob("*.tar.gz"))
+    assert len(wheels) == len(sdists) == 1
+    return wheels[0], sdists[0]
+
+
+def test_built_artifacts_pass_twine_and_have_safe_contents(distributions):
+    wheel, sdist = distributions
+    twine = _run([sys.executable, "-m", "twine", "check", str(wheel), str(sdist)])
+    assert twine.returncode == 0, twine.stdout + twine.stderr
+
+    wheel_names = [member.filename for member in _validate_wheel_archive(wheel)]
+    assert any(
+        name.endswith("fpga_packet_checksum_offload/cli.py") for name in wheel_names
+    )
+    assert not any(
+        name.startswith(("tests/", "rtl/", "formal/", "docs/", "examples/", "reports/"))
+        for name in wheel_names
+    )
+
+    sdist_names = [member.name for member in _validate_sdist_archive(sdist)]
+    for required in (
+        "/tests/vectors/checksum_vectors.txt",
+        "/tests/vectors/checksum_vectors.svh",
+        "/rtl/checksum16_stream.sv",
+        "/formal/checksum16_stream.sby",
+        "/tools/generate_rtl_vectors.py",
+        "/docs/architecture.md",
+        "/examples/frames.jsonl",
+        "/reports/campaign.json",
+        "/.github/workflows/ci.yml",
+    ):
+        assert any(name.endswith(required) for name in sdist_names), required
+    assert not any("__pycache__" in name or "/build/" in name for name in sdist_names)
+    assert not any(
+        PurePosixPath(name).name == "77" or (".sh" + "aw_") in name
+        for name in sdist_names
+    )
+
+
+def test_extracted_sdist_runs_tests_from_a_path_with_spaces(distributions, tmp_path):
+    _, sdist = distributions
+    destination = tmp_path / "source archive with spaces"
+    destination.mkdir()
+    _validate_sdist_archive(sdist)
+    with tarfile.open(sdist, mode="r:gz") as archive:
+        archive.extractall(destination, filter="data")
+    source_root = next(destination.iterdir())
+    environment = os.environ.copy()
+    environment["PACKAGE_CONTRACT_NESTED"] = "1"
+    result = _run(
+        [sys.executable, "-m", "pytest", "-q", "-k", "not package_contract"],
+        cwd=source_root,
+        env=environment,
+        timeout=300,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_isolated_wheel_supports_both_entry_points_without_source_leakage(
+    distributions, tmp_path
+):
+    wheel, _ = distributions
+    environment_root = tmp_path / "isolated wheel environment"
+    create = _run([sys.executable, "-m", "venv", str(environment_root)], timeout=120)
+    assert create.returncode == 0, create.stdout + create.stderr
+    if os.name == "nt":
+        python = environment_root / "Scripts/python.exe"
+        command = environment_root / "Scripts/checksum-offload.exe"
+    else:
+        python = environment_root / "bin/python"
+        command = environment_root / "bin/checksum-offload"
+    install = _run(
+        [str(python), "-m", "pip", "install", "--no-deps", "--no-index", str(wheel)],
+        cwd=tmp_path,
+        timeout=120,
+    )
+    assert install.returncode == 0, install.stdout + install.stderr
+
+    module_result = _run(
+        [str(python), "-m", "fpga_packet_checksum_offload", "checksum", "0000"],
+        cwd=tmp_path,
+    )
+    console_result = _run([str(command), "checksum", "0000"], cwd=tmp_path)
+    assert module_result.returncode == console_result.returncode == 0
+    assert module_result.stdout == console_result.stdout
+    assert str(ROOT).lower() not in module_result.stdout.lower()
+    location = _run(
+        [
+            str(python),
+            "-c",
+            "import fpga_packet_checksum_offload as p; print(p.__file__)",
+        ],
+        cwd=tmp_path,
+    )
+    assert location.returncode == 0
+    assert str(environment_root).lower() in location.stdout.lower()
+    assert str(ROOT).lower() not in location.stdout.lower()

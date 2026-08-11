@@ -916,7 +916,8 @@ def test_yosys_synthesizes_nonempty_default_core_when_available(tmp_path: Path) 
     netlist = output_directory / "checksum stream.json"
     script = "; ".join(
         (
-            f"read_verilog -sv {_yosys_quote(copied_core)} {_yosys_quote(copied_pseudo)}",
+            "read_verilog -sv "
+            f"{_yosys_quote(copied_core)} {_yosys_quote(copied_pseudo)}",
             "hierarchy -check -top checksum16_stream",
             "proc",
             "opt",

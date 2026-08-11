@@ -65,8 +65,7 @@ def _poisoned_beat(
         raise ValueError("poisoned beat must contain eight lanes and valid bytes")
     return StreamBeat(
         data=sum(
-            byte << (lane * 8)
-            for lane, byte in enumerate(valid_bytes + poison_bytes)
+            byte << (lane * 8) for lane, byte in enumerate(valid_bytes + poison_bytes)
         ),
         keep=(1 << len(valid_bytes)) - 1,
         first=first,
@@ -80,7 +79,11 @@ def _cases() -> tuple[VectorCase, ...]:
         VectorCase(
             "even_length",
             16,
-            (CycleInput(_beat(bytes.fromhex("12345678"), first=True, last=True), False),),
+            (
+                CycleInput(
+                    _beat(bytes.fromhex("12345678"), first=True, last=True), False
+                ),
+            ),
         ),
         VectorCase(
             "odd_length",
@@ -120,13 +123,20 @@ def _cases() -> tuple[VectorCase, ...]:
         VectorCase(
             "carry_folding",
             16,
-            (CycleInput(_beat(bytes.fromhex("ffffffff"), first=True, last=True), False),),
+            (
+                CycleInput(
+                    _beat(bytes.fromhex("ffffffff"), first=True, last=True), False
+                ),
+            ),
         ),
         VectorCase(
             "seeded_multibeat",
             16,
             (
-                CycleInput(_beat(bytes(range(1, 9)), first=True, last=False, seed=0x1234), False),
+                CycleInput(
+                    _beat(bytes(range(1, 9)), first=True, last=False, seed=0x1234),
+                    False,
+                ),
                 CycleInput(_beat(bytes(range(9, 14)), first=False, last=True), False),
             ),
         ),
@@ -188,7 +198,9 @@ def _cases() -> tuple[VectorCase, ...]:
             (
                 CycleInput(_beat(bytes(range(8)), first=True, last=False), False),
                 CycleInput(None, False, reset_n=False),
-                CycleInput(_beat(bytes.fromhex("cafe01"), first=True, last=True), False),
+                CycleInput(
+                    _beat(bytes.fromhex("cafe01"), first=True, last=True), False
+                ),
             ),
         ),
         VectorCase(
@@ -198,7 +210,9 @@ def _cases() -> tuple[VectorCase, ...]:
                 CycleInput(_beat(bytes.fromhex("1234"), first=True, last=True), False),
                 CycleInput(None, False),
                 CycleInput(None, False),
-                CycleInput(_beat(bytes.fromhex("56789a"), first=True, last=True, seed=7), True),
+                CycleInput(
+                    _beat(bytes.fromhex("56789a"), first=True, last=True, seed=7), True
+                ),
                 CycleInput(None, True),
             ),
         ),
@@ -328,9 +342,7 @@ def _render_cycle_call(
         raise ValueError(f"byte length does not fit case {case_name}")
 
     task_name = "vector_cycle16" if length_width == 16 else "vector_cycle4"
-    length_literal = (
-        f"16'd{byte_length}" if length_width == 16 else f"4'd{byte_length}"
-    )
+    length_literal = f"16'd{byte_length}" if length_width == 16 else f"4'd{byte_length}"
     return (
         f'        {task_name}("{case_name}", {cycle}, {reset_n}, '
         f"{request_valid}, 64'h{data}, 8'h{keep}, {first}, {last}, "
@@ -447,9 +459,9 @@ def main(argv: list[str] | None = None) -> int:
             sv_current = _read_checked(arguments.sv_output, expected_sv, "SV include")
         else:
             try:
-                disk_sv_expected = render_sv_include(current_text.decode("ascii")).encode(
-                    "ascii"
-                )
+                disk_sv_expected = render_sv_include(
+                    current_text.decode("ascii")
+                ).encode("ascii")
             except (UnicodeDecodeError, ValueError) as error:
                 print(
                     f"SV include file stale: {arguments.sv_output} "

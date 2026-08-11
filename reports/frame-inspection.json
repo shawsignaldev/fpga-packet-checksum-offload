@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "inspection": {
+    "destination_mac": "00:11:22:33:44:55",
+    "source_mac": "66:77:88:99:aa:bb",
+    "outer_ethertype": 2048,
+    "payload_ethertype": 2048,
+    "vlan_tags": [],
+    "ipv4": {
+      "offset": 14,
+      "source": "192.0.2.1",
+      "destination": "198.51.100.2",
+      "dscp": 0,
+      "ecn": 0,
+      "identification": 4660,
+      "ttl": 64,
+      "protocol": 17,
+      "flags": 2,
+      "fragment_offset": 0,
+      "more_fragments": false,
+      "header_length": 20,
+      "total_length": 33,
+      "payload_length": 13,
+      "checksum": {
+        "value": 15457,
+        "calculated": 15457,
+        "state": "valid",
+        "offset": 24
+      }
+    },
+    "transport": {
+      "protocol": "UDP",
+      "offset": 34,
+      "source_port": 12345,
+      "destination_port": 54321,
+      "header_length": 8,
+      "length": 13,
+      "payload_length": 5,
+      "checksum": {
+        "value": 1580,
+        "calculated": 1580,
+        "state": "valid",
+        "offset": 40
+      }
+    },
+    "checksum_state": "valid"
+  }
+}

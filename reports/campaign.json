@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "campaign": "checksum-cycle-campaign-v1",
+  "summary": {
+    "total": 14,
+    "passed": 14,
+    "failed": 0
+  },
+  "covered_behaviors": [
+    "carry-folding",
+    "empty-final",
+    "even-length",
+    "invalid-nonfinal-keep",
+    "length-overflow",
+    "missing-first",
+    "multibeat-pairing",
+    "odd-length",
+    "reset-recovery",
+    "seeded-sum",
+    "sparse-final-keep",
+    "stalled-output-stability",
+    "unexpected-first",
+    "zero-bubble-replacement"
+  ],
+  "cases": [
+    {
+      "name": "even_length",
+      "behaviors": [
+        "even-length"
+      ],
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "odd_length",
+      "behaviors": [
+        "odd-length"
+      ],
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "carry_folding",
+      "behaviors": [
+        "carry-folding"
+      ],
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "seeded_sum",
+      "behaviors": [
+        "seeded-sum"
+      ],
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "multibeat_pairing",
+      "behaviors": [
+        "multibeat-pairing"
+      ],
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "missing_first",
+      "behaviors": [
+        "missing-first"
+      ],
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "unexpected_first",
+      "behaviors": [
+        "unexpected-first"
+      ],
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "invalid_nonfinal_keep",
+      "behaviors": [
+        "invalid-nonfinal-keep"
+      ],
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "sparse_final_keep",
+      "behaviors": [
+        "sparse-final-keep"
+      ],
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "empty_final",
+      "behaviors": [
+        "empty-final"
+      ],
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "length_overflow",
+      "behaviors": [
+        "length-overflow"
+      ],
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "reset_recovery",
+      "behaviors": [
+        "reset-recovery"
+      ],
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "stalled_output_stability",
+      "behaviors": [
+        "stalled-output-stability"
+      ],
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "zero_bubble_replacement",
+      "behaviors": [
+        "zero-bubble-replacement"
+      ],
+      "passed": true,
+      "detail": null
+    }
+  ]
+}

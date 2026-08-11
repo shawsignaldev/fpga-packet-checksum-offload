@@ -5,6 +5,7 @@ import os
 import stat
 import string
 import sys
+from contextlib import suppress
 from dataclasses import dataclass, fields
 from pathlib import Path
 from typing import Any
@@ -134,9 +135,7 @@ def _parse_record(text: str, line_number: int, limits: TraceLimits) -> FrameReco
             f"{prefix}JSON nesting exceeds max_nesting ({limits.max_nesting})"
         )
     if not isinstance(value, dict):
-        raise ValueError(  # noqa: TRY004 - reader errors have one public type.
-            f"{prefix}record must be a JSON object"
-        )
+        raise ValueError(f"{prefix}record must be a JSON object")
 
     expected_fields = {"name", "frame_hex"}
     actual_fields = set(value)
@@ -150,13 +149,9 @@ def _parse_record(text: str, line_number: int, limits: TraceLimits) -> FrameReco
     name = value["name"]
     frame_hex = value["frame_hex"]
     if not isinstance(name, str):
-        raise ValueError(  # noqa: TRY004 - reader errors have one public type.
-            f"{prefix}name must be a string"
-        )
+        raise ValueError(f"{prefix}name must be a string")
     if not isinstance(frame_hex, str):
-        raise ValueError(  # noqa: TRY004 - reader errors have one public type.
-            f"{prefix}frame_hex must be a string"
-        )
+        raise ValueError(f"{prefix}frame_hex must be a string")
     if any(character not in string.hexdigits for character in frame_hex):
         raise ValueError(f"{prefix}frame_hex contains non-hexadecimal characters")
     if len(frame_hex) % 2:
@@ -211,10 +206,8 @@ def read_frame_batch(
         raise ValueError(f"cannot read trace file: {source}") from None
     finally:
         if descriptor is not None:
-            try:
+            with suppress(OSError):
                 os.close(descriptor)
-            except OSError:
-                pass
 
     records: list[FrameRecord] = []
     raw_byte_count = 0

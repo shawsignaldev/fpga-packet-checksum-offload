@@ -4,6 +4,7 @@ import json
 import os
 import tempfile
 from collections.abc import Iterable
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -385,10 +386,8 @@ def _fsync_directory(directory: Path) -> None:
     try:
         os.fsync(descriptor)
     finally:
-        try:
+        with suppress(OSError):
             os.close(descriptor)
-        except OSError:
-            pass
 
 
 def write_text_atomic(path: str | Path, text: str) -> None:
@@ -416,10 +415,8 @@ def write_text_atomic(path: str | Path, text: str) -> None:
         _fsync_directory(target.parent)
     finally:
         if temporary is not None:
-            try:
+            with suppress(OSError):
                 temporary.unlink()
-            except OSError:
-                pass
 
 
 __all__ = [

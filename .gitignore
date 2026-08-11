@@ -5,4 +5,4 @@ __pycache__/
 build/
 dist/
 data/
-.shaw_advanced_research_batch_seven
+.ruff_cache/

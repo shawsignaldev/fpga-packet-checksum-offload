@@ -268,8 +268,9 @@ def test_static_golden_frames_match_fixed_metadata(fixture_name):
         assert inspection.transport.source_port == expected["source_port"]
         assert inspection.transport.destination_port == expected["destination_port"]
         assert inspection.transport.checksum.value == expected["transport_checksum"]
-        assert (
-            inspection.transport.checksum.calculated == expected["transport_checksum"]
+        assert inspection.transport.checksum.calculated == expected.get(
+            "transport_checksum_calculated",
+            expected["transport_checksum"],
         )
         assert (
             inspection.transport.checksum.state.value
@@ -481,6 +482,13 @@ def test_first_fragments_parse_base_transport_header_as_incomplete(protocol):
     assert inspection.transport.checksum.state is ChecksumState.INCOMPLETE
     assert inspection.transport.checksum.calculated is None
     assert inspection.checksum_state is ChecksumState.INCOMPLETE
+
+
+def test_static_udp_fragment_fixture_is_derived_from_owned_packet_helpers():
+    complete, _ = _udp_segment(bytes.fromhex(FIXTURES["udp_first_fragment"]["payload"]))
+    expected = _ethernet_frame(_ipv4_packet(complete[:8], flags=1))
+
+    assert bytes.fromhex(FIXTURES["udp_first_fragment"]["frame_hex"]) == expected
 
 
 def test_first_tcp_fragment_allows_declared_options_beyond_capture():

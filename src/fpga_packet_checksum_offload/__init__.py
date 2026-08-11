@@ -1,4 +1,6 @@
-"""Advanced research package for fpga-packet-checksum-offload."""
+"""Reference software and verification models for packet checksum offload."""
+
+__version__ = "1.0.0"
 
 from fpga_packet_checksum_offload.arithmetic import (
     ChecksumAccumulator,
@@ -74,6 +76,7 @@ __all__ = [
     "TraceLimits",
     "TransportInfo",
     "VlanTag",
+    "__version__",
     "checksum16",
     "checksum_bytes",
     "fold_sum",

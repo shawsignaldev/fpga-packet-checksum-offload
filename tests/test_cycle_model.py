@@ -68,9 +68,7 @@ def _pending_result(model: ChecksumCycleModel) -> StreamResult:
         (bytes(range(1, 22)), 0x1234),
     ],
 )
-def test_successful_packets_match_independent_network_byte_order_oracle(
-    payload, seed
-):
+def test_successful_packets_match_independent_network_byte_order_oracle(payload, seed):
     model = ChecksumCycleModel()
 
     for beat in _packet_beats(payload, seed):
@@ -473,9 +471,7 @@ def test_cycle_model_does_not_depend_on_production_arithmetic_module():
         for alias in node.names
     }
     imported_modules.update(
-        node.module or ""
-        for node in ast.walk(tree)
-        if isinstance(node, ast.ImportFrom)
+        node.module or "" for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)
     )
 
     assert all("arithmetic" not in module for module in imported_modules)
