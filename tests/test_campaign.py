@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+from importlib import util
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,7 @@ from fpga_packet_checksum_offload.campaign import (
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = REPOSITORY_ROOT / "src"
 VECTOR_SNAPSHOT = REPOSITORY_ROOT / "tests" / "vectors" / "checksum_vectors.txt"
+VECTOR_INCLUDE = REPOSITORY_ROOT / "tests" / "vectors" / "checksum_vectors.svh"
 VECTOR_GENERATOR = REPOSITORY_ROOT / "tools" / "generate_rtl_vectors.py"
 
 EXPECTED_BEHAVIORS = {
@@ -32,6 +34,15 @@ EXPECTED_BEHAVIORS = {
     "unexpected-first",
     "zero-bubble-replacement",
 }
+
+
+def _load_vector_generator():
+    spec = util.spec_from_file_location("checksum_vector_generator", VECTOR_GENERATOR)
+    assert spec is not None and spec.loader is not None
+    module = util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_campaign_passes_and_covers_every_required_behavior_deterministically():
@@ -108,10 +119,22 @@ print(",".join(result.failed_case_names))
 def test_vector_generation_is_byte_deterministic_and_matches_snapshot(tmp_path):
     first_output = tmp_path / "first.txt"
     second_output = tmp_path / "second.txt"
+    first_include = tmp_path / "first.svh"
+    second_include = tmp_path / "second.svh"
 
-    for output in (first_output, second_output):
+    for output, include in (
+        (first_output, first_include),
+        (second_output, second_include),
+    ):
         completed = subprocess.run(
-            [sys.executable, str(VECTOR_GENERATOR), "--output", str(output)],
+            [
+                sys.executable,
+                str(VECTOR_GENERATOR),
+                "--output",
+                str(output),
+                "--sv-output",
+                str(include),
+            ],
             cwd=REPOSITORY_ROOT,
             check=False,
             capture_output=True,
@@ -122,6 +145,11 @@ def test_vector_generation_is_byte_deterministic_and_matches_snapshot(tmp_path):
     expected = VECTOR_SNAPSHOT.read_bytes()
     assert first_output.read_bytes() == expected
     assert second_output.read_bytes() == expected
+    expected_include = VECTOR_INCLUDE.read_bytes()
+    assert first_include.read_bytes() == expected_include
+    assert second_include.read_bytes() == expected_include
+    assert b"CHECKSUM_VECTOR_INCLUDE_FORMAT 1" in expected_include
+    assert b"task automatic run_checksum_vectors_v1" in expected_include
     assert b"VECTOR_FORMAT checksum16_stream_cycle 1\n" in expected
     assert b"FIELDS " in expected
     assert b"CASE " in expected
@@ -137,12 +165,39 @@ def test_vector_generation_is_byte_deterministic_and_matches_snapshot(tmp_path):
     assert b"SUCCESS" in expected and b" 15\n" in expected
     assert b"LENGTH_OVERFLOW 0000 0000 8\n" in expected
     expected.decode("ascii")
+    expected_include.decode("ascii")
+
+
+def test_sv_include_is_parsed_from_canonical_text_and_changes_with_any_field():
+    generator = _load_vector_generator()
+    canonical = generator.render_vectors()
+    rendered = generator.render_sv_include(canonical)
+
+    assert rendered.encode("ascii") == VECTOR_INCLUDE.read_bytes()
+    for old, new in (
+        ("0000000078563412", "0000000078563413"),
+        (" 0f 1 1 0000 ", " 07 1 1 0000 "),
+        (" SUCCESS 9753 68ac 4", " SUCCESS 9752 68ac 4"),
+        (" response_fields_post_edge", " response_fields_post_edgf"),
+    ):
+        mutated = canonical.replace(old, new, 1)
+        assert mutated != canonical
+        assert generator.render_sv_include(mutated) != rendered
 
 
 def test_vector_check_mode_reports_missing_without_creating_file(tmp_path):
     output = tmp_path / "missing.txt"
+    include = tmp_path / "missing.svh"
     completed = subprocess.run(
-        [sys.executable, str(VECTOR_GENERATOR), "--output", str(output), "--check"],
+        [
+            sys.executable,
+            str(VECTOR_GENERATOR),
+            "--output",
+            str(output),
+            "--sv-output",
+            str(include),
+            "--check",
+        ],
         cwd=REPOSITORY_ROOT,
         check=False,
         capture_output=True,
@@ -152,16 +207,47 @@ def test_vector_check_mode_reports_missing_without_creating_file(tmp_path):
     assert completed.returncode != 0
     assert "missing" in completed.stderr.lower()
     assert not output.exists()
+    assert not include.exists()
 
 
-def test_vector_check_mode_reports_stale_without_rewriting_file(tmp_path):
+@pytest.mark.parametrize("stale_artifact", ("text", "include"))
+def test_vector_check_mode_reports_stale_without_rewriting_files(
+    tmp_path, stale_artifact
+):
     output = tmp_path / "stale.txt"
-    output.write_bytes(b"stale\n")
+    include = tmp_path / "stale.svh"
+    generated = subprocess.run(
+        [
+            sys.executable,
+            str(VECTOR_GENERATOR),
+            "--output",
+            str(output),
+            "--sv-output",
+            str(include),
+        ],
+        cwd=REPOSITORY_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert generated.returncode == 0, generated.stderr
+    target = output if stale_artifact == "text" else include
+    target.write_bytes(b"stale\n")
     os.utime(output, ns=(1_000_000_000, 1_000_000_000))
-    before = output.stat()
+    os.utime(include, ns=(1_000_000_000, 1_000_000_000))
+    before_output = (output.read_bytes(), output.stat().st_mtime_ns)
+    before_include = (include.read_bytes(), include.stat().st_mtime_ns)
 
     completed = subprocess.run(
-        [sys.executable, str(VECTOR_GENERATOR), "--check", "--output", str(output)],
+        [
+            sys.executable,
+            str(VECTOR_GENERATOR),
+            "--check",
+            "--output",
+            str(output),
+            "--sv-output",
+            str(include),
+        ],
         cwd=REPOSITORY_ROOT,
         check=False,
         capture_output=True,
@@ -170,14 +256,22 @@ def test_vector_check_mode_reports_stale_without_rewriting_file(tmp_path):
 
     assert completed.returncode != 0
     assert "stale" in completed.stderr.lower()
-    assert output.read_bytes() == b"stale\n"
-    assert output.stat().st_mtime_ns == before.st_mtime_ns
+    assert (output.read_bytes(), output.stat().st_mtime_ns) == before_output
+    assert (include.read_bytes(), include.stat().st_mtime_ns) == before_include
 
 
 def test_vector_check_mode_accepts_current_file_without_rewriting_it(tmp_path):
     output = tmp_path / "current.txt"
+    include = tmp_path / "current.svh"
     generated = subprocess.run(
-        [sys.executable, str(VECTOR_GENERATOR), "--output", str(output)],
+        [
+            sys.executable,
+            str(VECTOR_GENERATOR),
+            "--output",
+            str(output),
+            "--sv-output",
+            str(include),
+        ],
         cwd=REPOSITORY_ROOT,
         check=False,
         capture_output=True,
@@ -185,10 +279,20 @@ def test_vector_check_mode_accepts_current_file_without_rewriting_it(tmp_path):
     )
     assert generated.returncode == 0, generated.stderr
     os.utime(output, ns=(1_000_000_000, 1_000_000_000))
-    before = output.stat()
+    os.utime(include, ns=(1_000_000_000, 1_000_000_000))
+    before_output = (output.read_bytes(), output.stat().st_mtime_ns)
+    before_include = (include.read_bytes(), include.stat().st_mtime_ns)
 
     checked = subprocess.run(
-        [sys.executable, str(VECTOR_GENERATOR), "--output", str(output), "--check"],
+        [
+            sys.executable,
+            str(VECTOR_GENERATOR),
+            "--output",
+            str(output),
+            "--sv-output",
+            str(include),
+            "--check",
+        ],
         cwd=REPOSITORY_ROOT,
         check=False,
         capture_output=True,
@@ -197,4 +301,52 @@ def test_vector_check_mode_accepts_current_file_without_rewriting_it(tmp_path):
 
     assert checked.returncode == 0, checked.stderr
     assert checked.stderr == ""
-    assert output.stat().st_mtime_ns == before.st_mtime_ns
+    assert (output.read_bytes(), output.stat().st_mtime_ns) == before_output
+    assert (include.read_bytes(), include.stat().st_mtime_ns) == before_include
+
+
+def test_vector_check_mode_ties_include_to_on_disk_text_fields(tmp_path):
+    output = tmp_path / "field-mutated.txt"
+    include = tmp_path / "field-mutated.svh"
+    generated = subprocess.run(
+        [
+            sys.executable,
+            str(VECTOR_GENERATOR),
+            "--output",
+            str(output),
+            "--sv-output",
+            str(include),
+        ],
+        cwd=REPOSITORY_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert generated.returncode == 0, generated.stderr
+    output.write_text(
+        output.read_text(encoding="ascii").replace(" SUCCESS 9753 ", " SUCCESS 9752 ", 1),
+        encoding="ascii",
+        newline="\n",
+    )
+    before = (output.read_bytes(), include.read_bytes())
+
+    checked = subprocess.run(
+        [
+            sys.executable,
+            str(VECTOR_GENERATOR),
+            "--check",
+            "--output",
+            str(output),
+            "--sv-output",
+            str(include),
+        ],
+        cwd=REPOSITORY_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert checked.returncode != 0
+    assert "vector file stale" in checked.stderr
+    assert "SV include file stale" in checked.stderr
+    assert (output.read_bytes(), include.read_bytes()) == before
