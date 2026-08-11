@@ -1,0 +1,80 @@
+{
+  "udp_odd": {
+    "frame_hex": "00112233445566778899aabb0800450000211234400040113c61c0000201c63364023039d431000d062c0102030405",
+    "destination_mac": "001122334455",
+    "source_mac": "66778899aabb",
+    "source_ip": "192.0.2.1",
+    "destination_ip": "198.51.100.2",
+    "source_port": 12345,
+    "destination_port": 54321,
+    "payload": "0102030405",
+    "expected": {
+      "destination_mac": "001122334455",
+      "source_mac": "66778899aabb",
+      "outer_ethertype": 2048,
+      "payload_ethertype": 2048,
+      "source_ip": "192.0.2.1",
+      "destination_ip": "198.51.100.2",
+      "ip_protocol": 17,
+      "ipv4_checksum": 15457,
+      "ipv4_checksum_state": "valid",
+      "transport_protocol": "UDP",
+      "source_port": 12345,
+      "destination_port": 54321,
+      "transport_checksum": 1580,
+      "transport_checksum_state": "valid"
+    }
+  },
+  "tcp": {
+    "frame_hex": "102030405060a0b0c0d0e0f0080045000032123440004006c207cb007109c633644d01bbc0001234567889abcdef6018100064e800000101080a7061636b6574",
+    "destination_mac": "102030405060",
+    "source_mac": "a0b0c0d0e0f0",
+    "source_ip": "203.0.113.9",
+    "destination_ip": "198.51.100.77",
+    "source_port": 443,
+    "destination_port": 49152,
+    "sequence": 305419896,
+    "acknowledgment": 2309737967,
+    "options": "0101080a",
+    "payload": "7061636b6574",
+    "expected": {
+      "destination_mac": "102030405060",
+      "source_mac": "a0b0c0d0e0f0",
+      "outer_ethertype": 2048,
+      "payload_ethertype": 2048,
+      "source_ip": "203.0.113.9",
+      "destination_ip": "198.51.100.77",
+      "ip_protocol": 6,
+      "ipv4_checksum": 49671,
+      "ipv4_checksum_state": "valid",
+      "transport_protocol": "TCP",
+      "source_port": 443,
+      "destination_port": 49152,
+      "transport_checksum": 25832,
+      "transport_checksum_state": "valid"
+    }
+  },
+  "ipv4_options": {
+    "frame_hex": "00112233445566778899aabb08004600001f1234400040fd11ab0a0000010a000002010100006f7074696f6e73",
+    "source_ip": "10.0.0.1",
+    "destination_ip": "10.0.0.2",
+    "options": "01010000",
+    "payload": "6f7074696f6e73",
+    "expected": {
+      "destination_mac": "001122334455",
+      "source_mac": "66778899aabb",
+      "outer_ethertype": 2048,
+      "payload_ethertype": 2048,
+      "source_ip": "10.0.0.1",
+      "destination_ip": "10.0.0.2",
+      "ip_protocol": 253,
+      "ipv4_checksum": 4523,
+      "ipv4_checksum_state": "valid",
+      "transport_protocol": null,
+      "source_port": null,
+      "destination_port": null,
+      "transport_checksum": null,
+      "transport_checksum_state": null
+    }
+  }
+}

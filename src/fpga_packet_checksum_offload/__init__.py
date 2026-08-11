@@ -14,13 +14,31 @@ from fpga_packet_checksum_offload.checksum import (
     offload,
     validate,
 )
+from fpga_packet_checksum_offload.packet import (
+    ChecksumField,
+    ChecksumState,
+    FrameInspection,
+    IPv4Info,
+    PacketFormatError,
+    TransportInfo,
+    VlanTag,
+    inspect_ethernet_frame,
+)
 
 __all__ = [
     "ChecksumAccumulator",
+    "ChecksumField",
     "ChecksumResult",
+    "ChecksumState",
+    "FrameInspection",
+    "IPv4Info",
+    "PacketFormatError",
+    "TransportInfo",
+    "VlanTag",
     "checksum16",
     "checksum_bytes",
     "fold_sum",
+    "inspect_ethernet_frame",
     "ipv4_pseudo_header_seed",
     "offload",
     "replace_word_checksum",
