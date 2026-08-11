@@ -149,6 +149,12 @@ def _yosys_quote(path: Path) -> str:
     return f'"{value}"'
 
 
+def _formal_output_directory(parent: Path, leaf: str) -> Path:
+    if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", leaf) is None:
+        raise ValueError(f"formal output leaf must be shell-safe: {leaf!r}")
+    return parent / leaf
+
+
 def _assert_fresh_nonempty_artifact(
     path: Path, invocation_started_ns: int, description: str
 ) -> None:
@@ -788,16 +794,25 @@ def test_formal_evidence_wording_is_bounded_and_depth_pinned() -> None:
     assert "cover depth 20" in specification
 
 
+def test_formal_output_directory_requires_a_shell_safe_leaf(tmp_path: Path) -> None:
+    assert _formal_output_directory(tmp_path, "positive_proof_output") == (
+        tmp_path / "positive_proof_output"
+    )
+    for unsafe_leaf in ("positive proof output", "../escape", "", "bad/name"):
+        with pytest.raises(ValueError, match="shell-safe"):
+            _formal_output_directory(tmp_path, unsafe_leaf)
+
+
 def test_sby_positive_proof_passes(tmp_path: Path) -> None:
     _run_formal_task(
         "positive",
-        tmp_path / "positive proof output",
+        _formal_output_directory(tmp_path, "positive_proof_output"),
         expected_status="PASS",
     )
 
 
 def test_sby_cover_reaches_every_required_statement(tmp_path: Path) -> None:
-    _run_formal_cover_task(tmp_path / "formal cover output")
+    _run_formal_cover_task(_formal_output_directory(tmp_path, "formal_cover_output"))
 
 
 @pytest.mark.parametrize(("task", "assertion_marker"), FORMAL_FAILURE_MARKERS.items())
@@ -806,7 +821,7 @@ def test_sby_mutation_fails_only_targeted_assertion(
 ) -> None:
     _run_formal_task(
         task,
-        tmp_path / f"{task} counterexample output",
+        _formal_output_directory(tmp_path, f"{task}_counterexample_output"),
         expected_status="FAIL",
         assertion_marker=assertion_marker,
     )

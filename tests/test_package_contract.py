@@ -58,7 +58,7 @@ def test_project_metadata_declares_the_public_release_contract():
         assert (
             f"Programming Language :: Python :: 3.{version}" in project["classifiers"]
         )
-    assert {"pytest", "ruff", "build", "twine"} <= {
+    assert {"pytest", "ruff", "build", "twine", "setuptools", "wheel"} <= {
         re.split(r"[<>=!~]", requirement, maxsplit=1)[0]
         for requirement in project["optional-dependencies"]["dev"]
     }
